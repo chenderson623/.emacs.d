@@ -158,6 +158,38 @@ Use a hook so the message doesn't get clobbered by other messages.
                       gcs-done)))
 #+END_SRC
 
+*** editor
+#+begin_src emacs-lisp
+;; auto revert mode
+(global-auto-revert-mode 1)
+(add-hook 'dired-mode-hook 'auto-revert-mode)
+#+end_src
+
+**** spell check
+#+begin_src emacs-lisp
+(defvar ispell-program-name (or (executable-find "ispell")
+                               (executable-find "aspell")
+                               (executable-find "hunspell")))
+
+(when (equal system-type 'windows-nt)
+ (setenv "LANG" "en_US.utf8"))
+
+(when ispell-program-name
+  (add-hook 'prog-mode-hook #'flyspell-prog-mode))
+
+(setq flyspell-prog-text-faces '(font-lock-comment-face font-lock-doc-face))
+
+(setq flyspell-use-meta-tab nil)
+(add-hook 'dired-mode-hook 'auto-revert-mode)
+#+end_src
+
+*** dired
+#+begin_src emacs-lisp
+;; auto refresh dired when file changes
+(add-hook 'dired-mode-hook 'auto-revert-mode)
+(add-hook 'dired-mode-hook 'auto-revert-mode)
+#+end_src
+
 ** Package Management
 *** bootstrap Straight
 [[https://github.com/raxod502/straight.el][Straight.el]] is a next-generation, purely functional package manager for the Emacs
@@ -245,29 +277,98 @@ https://github.com/justbur/emacs-which-key
 
 *** ivy
 #+begin_src emacs-lisp
+
+(use-package ivy
+  :diminish (ivy-mode . "")
+  :config
+  (setq ivy-use-virtual-buffers t)
+  (setq ivy-height 20)
+  (setq ivy-count-format "%d/%d "))
+
   (use-package swiper
     :bind (("C-s" . swiper-isearch)
            ("C-r" . swiper-backward)
            ("M-%" . anzu-query-replace))
     )
 
-  (use-package ivy
-    :bind ( ("C-x b" . ivy-switch-buffer)))
-  (use-package counsel
-    :bind (("M-x" . counsel-M-x)
-           ("C-h f" . counsel-apropos)
-           ("C-x C-f" . counsel-find-file)
-           ("C-c u" . counsel-unicode-char)
+(use-package counsel
+  :bind* ; load when pressed
+  (
+    ("M-x"     . counsel-M-x)
+    ("C-s"     . swiper)
+;   ("C-x C-f" . counsel-find-file)
+;   ("C-x C-r" . counsel-recentf)  ; search for recently edited
+    ("C-x r l" . counsel-bookmark)
+    ("C-x y" . counsel-yank-pop)
+;   ("C-c g"   . counsel-git)      ; search for files in git repo
+;   ("C-c j"   . counsel-git-grep) ; search for regexp in git repo
+;   ("C-x l"   . counsel-locate)
+;   ("C-x C-f" . counsel-find-file)
+    ("C-h b" . counsel-descbinds)
+    ("C-c k" . counsel-ag)
+    ("C-c n" . counsel-fzf)
+   ("C-h f" . counsel-apropos)
+   ("<f1> f"  . counsel-describe-function)
+   ("<f1> v"  . counsel-describe-variable)
+   ("<f1> l"  . counsel-find-library)
+;   ("<f2> i"  . counsel-info-lookup-symbol)
+;   ("<f2> u"  . counsel-unicode-char)
+   ("C-c C-r" . ivy-resume)))     ; Resume last Ivy-based completion
 
-           ("C-x y" . counsel-yank-pop)
-           ("C-x C-r" . counsel-recentf)
-           ("C-x r l" . counsel-bookmark)
-           ("C-h b" . counsel-descbinds)
-           ("C-c k" . counsel-ag)
-           ("C-c n" . counsel-fzf)
-           )
-  )
   (use-package ivy-hydra)
+#+end_src
+
+*** helm
+#+begin_src emacs-lisp
+(use-package helm
+  :demand t
+  :bind
+  (("C-h SPC" . helm-all-mark-rings)
+   ;("M-x"     . helm-M-x)
+   ("C-x C-m" . helm-M-x)
+   ("M-y"     . helm-show-kill-ring)
+   ("C-x b"   . helm-mini)
+   ("C-x C-b" . helm-buffers-list)
+   ("C-x C-f" . helm-find-files)
+   ("C-h f"   . helm-apropos)
+   ("C-h r"   . helm-info-emacs)
+   ("C-h C-l" . helm-locate-library)
+   :map helm-map
+   ("<tab>"   . helm-execute-persistent-action)
+   ("C-i"     . helm-execute-persistent-action)
+   ("C-z"     . helm-select-action)
+   :map minibuffer-local-map
+   ("C-c C-l" . helm-minibuffer-history))
+  :bind*
+  (("C-r"     . helm-resume))
+  :init
+  (setq helm-command-prefix-key "C-c h")
+  (require 'helm-config)
+  :config
+  (helm-mode 1)
+  ;; Fuzzy matching everywhere
+  (setq helm-completion-style 'emacs
+        completion-styles     '(flex))
+  (setq
+   ;; Autoresize helm buffer depending on match count
+   helm-M-x-fuzzy-match t
+   helm-autoresize-max-height 0
+   helm-autoresize-min-height 40
+   helm-buffers-fuzzy-matching t
+   helm-candidate-number-limit 50
+   helm-case-fold-search 'smart
+   helm-completion-in-region-fuzzy-match t
+   helm-ff-file-name-history-use-recentf t
+   helm-ff-newfile-prompt-p nil
+   helm-ff-search-library-in-sexp t
+   helm-ff-transformer-show-only-basename nil
+   helm-imenu-fuzzy-match t
+   helm-locate-fuzzy-match nil
+   helm-move-to-line-cycle-in-source t
+   helm-recentf-fuzzy-match t
+   helm-semantic-fuzzy-match t
+   helm-split-window-inside-p t)
+  (helm-autoresize-mode 1))
 #+end_src
 
 ** Theme
@@ -459,4 +560,276 @@ Use solarized light
   (my/solarized-light)
 #+end_src
 
+** UI
+#+begin_src emacs-lisp
+;;; Do not show the welcome screen
+(setq inhibit-splash-screen t)
 
+;;; Scrolling
+(setq auto-window-vscroll nil)
+;; the text cursor moves off-screen. Instead, only scroll the minimum amount
+;; necessary to show the new line. (A number of 101+ disables re-centering.)
+(setq scroll-conservatively 101)
+
+;; Optimize mouse wheel scrolling for smooth-scrolling trackpad use.
+;; Trackpads send a lot more scroll events than regular mouse wheels,
+;; so the scroll amount and acceleration must be tuned to smooth it out.
+(setq
+ ;; If the frame contains multiple windows, scroll the one under the cursor
+ ;; instead of the one that currently has keyboard focus.
+ mouse-wheel-follow-mouse 't
+ ;; Completely disable mouse wheel acceleration to avoid speeding away.
+ mouse-wheel-progressive-speed nil
+ ;; The most important setting of all! Make each scroll-event move 2 lines at
+ ;; a time (instead of 5 at default). Simply hold down shift to move twice as
+ ;; fast, or hold down control to move 3x as fast. Perfect for trackpads.
+ mouse-wheel-scroll-amount '(2 ((shift) . 4) ((control) . 6)))
+
+;;; Fonts
+(when (eq system-type 'gnu/linux)
+  ;(defvar my-font1 (font-spec :family "InconsolataLGC Nerd Font" :size 13))
+  (defvar my-font1 (font-spec :family "Inconsolata" :size 13))
+  (defvar my-font2 (font-spec :family "Hasklug Nerd Font" :size 13))
+  (defvar my-font3 (font-spec :family "DejaVuSansMono Nerd Font" :size 13))
+  (defvar my-font4 (font-spec :family "SauceCodePro Nerd Font" :size 13))
+  (defvar my-font5 (font-spec :family "FiraCode Nerd Font" :size 13))
+  (defvar my-font6 (font-spec :family "RobotoMono Nerd Font" :size 14))
+  (defvar my-ligatures t)
+  ;(defvar my-vari-font (font-spec :family "Metropolis Light"))
+  ;(defvar my-unicode-font (font-spec :family "Symbola"))
+  (set-face-attribute 'default nil :font my-font1)
+  ;(set-face-attribute 'variable-pitch nil :font my-vari-font)
+  ;(set-fontset-font t 'unicode my-unicode-font nil 'prepend)
+  (setq-default line-spacing 0.10)
+)
+
+;;; Frames
+;;;; Frame formatting
+;cjh (setq frame-title-format "\n")
+;; (setq frame-title-format '('nil))
+(setq frame-title-format
+      '((buffer-file-name "%f" "%b")))
+
+;cjh (if (display-graphic-p)
+;cjh     (progn
+;cjh       ;; start frame of emacs maximized
+;cjh       (add-to-list 'initial-frame-alist '(fullscreen . maximized))
+;cjh       ;; new frames
+;cjh       (setq default-frame-alist
+;cjh             '(
+;cjh               (top . 25)
+;cjh               (left . 275)
+;cjh               (width . 106) ;; chars
+;cjh               (height . 60) ;; lines
+;cjh               ))))
+
+;;;; Frame titlebar
+;; Theme transparent titlebar
+(when (memq window-system '(mac ns))
+  (add-to-list 'default-frame-alist '(ns-appearance . dark))
+  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
+
+;; Fix titlebar titling colors
+;; see also https://github.com/d12frosted/homebrew-emacs-plus/issues/55
+(use-package ns-auto-titlebar
+  :commands ns-auto-titlebar-mode
+  :if (eq system-type 'darwin)
+  :init (ns-auto-titlebar-mode))
+
+;; no border title
+;; (setq default-frame-alist '((undecorated . t)))
+
+;;;; No frame scroll bars
+(defun my/disable-scroll-bars (frame)
+  "Disable scroll bars on new frames"
+  (modify-frame-parameters frame
+                           '((vertical-scroll-bars . nil)
+                             (horizontal-scroll-bars . nil))))
+(add-hook 'after-make-frame-functions 'my/disable-scroll-bars)
+
+;;; Scale Text
+(global-set-key (kbd "s-=") 'text-scale-increase)
+(global-set-key (kbd "s--") 'text-scale-decrease)
+(global-set-key (kbd "s-0") 'text-scale-adjust)
+
+;;; Line Numbers
+(use-package display-line-numbers
+  :ensure nil
+  ;; :hook (markdown-mode prog-mode)
+  :commands display-line-numbers-mode
+  :init
+  (setq-default display-line-numbers-type 'visual))
+
+;;; Highlight
+(use-package highlight-numbers
+  :defer t
+  :commands highlight-numbers-mode
+  :init
+  (add-hook 'prog-mode-hook #'highlight-numbers-mode))
+
+(use-package hl-todo
+  :defer t
+  :commands hl-todo-mode
+  :init
+  ;; (add-hook 'org-mode-hook #'hl-todo-mode)
+  (add-hook 'prog-mode-hook #'hl-todo-mode)
+  (add-hook 'markdown-mode-hook #'hl-todo-mode))
+
+;;; Icons
+(use-package all-the-icons
+  :after dashboard)
+;;dependency
+;cjh (quelpa
+;cjh  '(font-lock+ :fetcher wiki))
+;cjh (use-package font-lock+
+;cjh   :defer 1)
+;; icons for dired
+(use-package all-the-icons-dired
+  :defer t
+  :commands all-the-icons-dired-mode
+  :init
+  (add-hook 'dired-mode-hook 'all-the-icons-dired-mode))
+
+;;; Beacon
+(use-package beacon
+ :defer 5
+ :config
+ (beacon-mode 1)
+ (add-to-list 'beacon-dont-blink-major-modes 'eshell-mode))
+
+;;; Desktop
+;(desktop-save-mode 1)
+;(use-package desktop+)
+
+;;; Emoji
+; (use-package emojify
+;   :commands (emojify-mode emojify-apropos-emoji)
+;   ;; :hook ((prog-mode markdown-mode) . emojify-mode)
+;   :config
+;   (setq emojify-emojis-dir (concat my-etc-dir "emojis")))
+
+#+end_src
+
+** Org
+
+#+begin_src emacs-lisp
+;;;; Org Directories
+  (setq-default org-directory (expand-file-name "org" *paths/user-home*))
+  (setq-default org-default-notes-file (expand-file-name "inbox.org" org-directory))
+  (setq-default org-default-capture-file (expand-file-name "refile.org" org-directory))
+  (setq-default org-agenda-files (list org-directory))
+
+  (setq org-capture-templates
+        ;; Note the ` and , to get concat to evaluate properly
+        `(
+
+          ("p" "Protocol"
+           entry (file+headline org-default-capture-file "Browser Capture")
+           "* %:description :RESEARCH:\n#+BEGIN_QUOTE\n%i\n\n -- %:link %u\n #+END_QUOTE\n\n%?")
+          ;("L" "Protocol Link"
+          ; entry (file+headline org-default-cpature-file "Browser Capture")
+          ; "* %? [[%:link][%:description]] \nCaptured On: %u")
+          ("L" "Protocol Link"
+           entry (file+headline org-default-capture-file "Browser Capture")
+           "* [[%:link][%:description]] :RESEARCH:\n%:link \nCaptured On: %u")
+
+      ))
+
+  ;; Add date to captured items
+  (defun add-property-with-date-captured ()
+    "Add DATE_CAPTURED property to the current item."
+    (interactive)
+    (org-set-property "DATE_CAPTURED" (format-time-string "%F %A %r")))
+
+  (add-hook 'org-capture-before-finalize-hook 'add-property-with-date-captured)
+
+
+(use-package org
+  :ensure org-plus-contrib
+  :pin org ; ensure the newest version from 'org' repository
+  :config
+  (setq
+      ;; appearance
+      ; virtual indentation
+      org-startup-indented t
+      ; indent 4 spaces
+      org-indent-indentation-per-level 4
+
+      ; wrap lines
+      org-startup-truncated nil
+  )
+)
+
+;  (setq org-modules '(org-bbdb
+;                      org-gnus
+;                      org-drill
+;                      org-info
+;                      org-jsinfo
+;                      org-habit
+;                      org-irc
+;                      org-mouse
+;                      org-protocol
+;                      org-annotate-file
+;                      org-eval
+;                      org-expiry
+;                      org-interactive-query
+;                      org-man
+;                      org-collector
+;                      org-panel
+;                      org-screen
+;                      org-toc))
+
+  (setq org-modules '(
+    org-protocol
+    org-tempo
+    org-capture
+))
+
+(eval-after-load 'org
+ '(org-load-modules-maybe t))
+
+
+;; from: https://www.diegoberrocal.com/blog/2015/08/19/org-protocol/
+(defadvice org-capture
+    (after make-full-window-frame activate)
+  "Advise capture to be the only window when used as a popup"
+  (if (equal "emacs-capture" (frame-parameter nil 'name))
+      (delete-other-windows)))
+
+(defadvice org-capture-finalize
+    (after delete-capture-frame activate)
+  "Advise capture-finalize to close the frame"
+  (if (equal "emacs-capture" (frame-parameter nil 'name))
+      (delete-frame)))
+
+;; Start flyspell in org mode buffers
+;(add-to-list 'org-mode-hook 'flyspell-mode)
+
+;; FROM: https://yiming.dev/blog/2018/03/02/my-org-refile-workflow/
+(defun +org/opened-buffer-files ()
+  "Return the list of files currently opened in emacs"
+  (delq nil
+        (mapcar (lambda (x)
+                  (if (and (buffer-file-name x)
+                           (string-match "\\.org$"
+                                         (buffer-file-name x)))
+                      (buffer-file-name x)))
+                (buffer-list))))
+
+(setq org-refile-targets '((+org/opened-buffer-files :maxlevel . 4)))
+
+(setq org-refile-use-outline-path 'file)
+;; makes org-refile outline working with helm/ivy
+(setq org-outline-path-complete-in-steps nil)
+(setq org-refile-allow-creating-parent-nodes 'confirm)
+
+(defun +org-search ()
+  (interactive)
+  (org-refile '(4)))
+
+;;(setq org-refile-use-cache t)
+;;
+;;(run-with-idle-timer 300 t (lambda ()
+;;                            (org-refile-cache-clear)
+;;                            (org-refile-get-targets)))
+#+end_src
