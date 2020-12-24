@@ -754,7 +754,7 @@ Use solarized light
 
 (use-package org
   :ensure org-plus-contrib
-  :pin org ; ensure the newest version from 'org' repository
+;;  :pin org ; ensure the newest version from 'org' repository
   :config
   (setq
       ;; appearance
