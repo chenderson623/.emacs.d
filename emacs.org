@@ -159,6 +159,68 @@ Use a hook so the message doesn't get clobbered by other messages.
 #+END_SRC
 
 *** editor
+
+Save custom variables in separate file for different version
+#+begin_src emacs-lisp
+(setq custom-file (locate-user-emacs-file "custom.el"))
+
+(when (file-exists-p custom-file)
+  (load custom-file))
+#+end_src
+
+UI settings
+#+begin_src emacs-lisp
+  (setq
+   ;; No need to see GNU agitprop.
+   inhibit-startup-screen t
+   ;; No need to remind me what a scratch buffer is.
+   initial-scratch-message nil
+   ;; Double-spaces after periods is morally wrong.
+   sentence-end-double-space nil
+   ;; Never ding at me, ever.
+   ring-bell-function 'ignore
+   ;; Prompts should go in the minibuffer, not in a GUI.
+   use-dialog-box nil
+   ;; Fix undo in commands affecting the mark.
+   mark-even-if-inactive nil
+   ;; Let C-k delete the whole line.
+   kill-whole-line t
+   ;; search should be case-sensitive by default
+   case-fold-search nil
+   )
+
+;; Never mix tabs and spaces. Never use tabs, period.
+;; We need the setq-default here because this becomes
+;; a buffer-local variable when set.
+(setq-default indent-tabs-mode nil)
+
+(defalias 'yes-or-no-p 'y-or-n-p) ; Accept 'y' in lieu of 'yes'.
+#+end_src
+
+Use UTF-8
+#+begin_src emacs-lisp
+(set-charset-priority 'unicode)
+(setq locale-coding-system 'utf-8)
+(set-terminal-coding-system 'utf-8)
+(set-keyboard-coding-system 'utf-8)
+(set-selection-coding-system 'utf-8)
+(prefer-coding-system 'utf-8)
+(setq default-process-coding-system '(utf-8-unix . utf-8-unix))
+#+end_src
+
+Turn on some modes
+#+begin_src emacs-lisp
+(delete-selection-mode t)
+;;(global-display-line-numbers-mode t)
+(column-number-mode)
+#+end_src
+
+Whitespace
+#+begin_src emacs-lisp
+(add-hook 'before-save-hook #'delete-trailing-whitespace)
+(setq require-final-newline t)
+#+end_src
+
 #+begin_src emacs-lisp
 ;; auto revert mode
 (global-auto-revert-mode 1)
@@ -197,7 +259,6 @@ Use a hook so the message doesn't get clobbered by other messages.
 (add-hook 'dired-mode-hook 'auto-revert-mode)
 (add-hook 'dired-mode-hook 'auto-revert-mode)
 #+end_src
-
 ** Package Management
 *** bootstrap Straight
 [[https://github.com/raxod502/straight.el][Straight.el]] is a next-generation, purely functional package manager for the Emacs
@@ -267,8 +328,60 @@ initialization significantly as many packages are only loaded later when they ar
     (use-package git))
 #+end_src
 
-** Packages
+** Key Bindings
 
+Unbind some keys
+#+begin_src emacs-lisp
+(unbind-key "C-x C-f") ;; find-file-read-only
+(unbind-key "C-x C-d") ;; list-directory
+(unbind-key "C-z") ;; suspend-frame
+(unbind-key "M-o") ;; facemenu-mode
+(unbind-key "<mouse-2>") ;; pasting with mouse-wheel click
+(unbind-key "<C-wheel-down>") ;; text scale adjust
+#+end_src
+
+Open my emacs config
+#+begin_src emacs-lisp
+(defun open-init-file ()
+  "Open this very file."
+  (interactive)
+  (find-file "~/.config/emacs/readme.org"))
+
+(bind-key "C-c e" #'open-init-file)
+#+end_src
+
+Copy filename to clipboard
+#+begin_src emacs-lisp
+(defun copy-file-name-to-clipboard ()
+  "Copy the current buffer file name to the clipboard."
+  (interactive)
+  (let ((filename (if (equal major-mode 'dired-mode) default-directory (buffer-file-name))))
+    (when filename
+      (kill-new filename)
+      (message "Copied buffer file name '%s' to the clipboard." filename))))
+
+(bind-key "C-c P" #'copy-file-name-to-clipboard)
+#+end_src
+
+** Packages
+*** exec-path-from-shell
+ensure that Emacs has access to the PATH associated with the current environment.
+#+begin_src emacs-lisp
+;(use-package exec-path-from-shell
+;  :ensure t
+;  :config (exec-path-from-shell-initialize))
+#+end_src
+*** undo-tree
+#+begin_src emacs-lisp
+(use-package undo-tree
+  :ensure t
+  :diminish
+  :bind (("C-c _" . undo-tree-visualize))
+  :config
+  (global-undo-tree-mode +1)
+  ;(unbind-key "M-_" undo-tree-map)
+  )
+#+end_src
 *** which-key
 https://github.com/justbur/emacs-which-key
 #+begin_src emacs-lisp
@@ -379,8 +492,47 @@ https://github.com/justbur/emacs-which-key
   (helm-autoresize-mode 1))
 #+end_src
 
+*** dimmer
+#+begin_src emacs-lisp
+(use-package dimmer
+  :ensure t
+  :custom (dimmer-fraction 0.1)
+  :config (dimmer-mode))
+#+end_src
+*** multiple-cursors
+#+begin_src emacs-lisp
+(use-package multiple-cursors
+  :ensure t
+  :bind (("C-c m m" . #'mc/edit-lines )
+         ("C-c m d" . #'mc/mark-all-dwim )))
+#+end_src
+*** deadgrep
+#+begin_src emacs-lisp
+(use-package deadgrep
+  :ensure t
+  :bind (("C-c s" . #'deadgrep)))
+#+end_src
+*** visual-regexp
+#+begin_src emacs-lisp
+(use-package visual-regexp
+  :ensure t
+  :bind (("C-c r" . #'vr/replace)))
+#+end_src
 ** Theme
+*** doom themes
+#+begin_src emacs-lisp :tangle no
+(use-package doom-themes
+  :ensure t
+  :config
+  (let ((chosen-theme 'doom-oceanic-next))
+    (doom-themes-visual-bell-config)
+    (doom-themes-org-config)
+    (setq doom-challenger-deep-brighter-comments t
+          doom-challenger-deep-brighter-modeline t)
+    (load-theme chosen-theme)))
+#+end_src
 
+*** solarized
 #+begin_src emacs-lisp
 (use-package solarized-theme
   :ensure t
@@ -563,9 +715,11 @@ https://github.com/justbur/emacs-which-key
    `(fancy-battery-discharging ((t (:foreground "dark magenta" :weight bold))))))
 #+end_src
 
+*** start theme
 Use solarized light
 #+begin_src emacs-lisp
   (my/solarized-light)
+  ;; (load-theme 'doom-oceanic-next t)
 #+end_src
 
 ** UI
