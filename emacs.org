@@ -276,7 +276,7 @@ hacker.
             'silent 'inhibit-cookies)
           (goto-char (point-max))
           (eval-print-last-sexp)))
-      (load bootstrap-file nil 'nomessage)))    
+      (load bootstrap-file nil 'nomessage)))
 #+end_src
 
 *** package settings
@@ -492,8 +492,8 @@ https://github.com/justbur/emacs-which-key
   (helm-autoresize-mode 1))
 #+end_src
 
-*** dimmer
-#+begin_src emacs-lisp
+*** TODO dimmer
+#+begin_src emacs-lisp :tangle no
 (use-package dimmer
   :ensure t
   :custom (dimmer-fraction 0.1)
